@@ -1,0 +1,54 @@
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Eclipse
+.project
+.classpath
+.settings/
+bin/
+tmp/
+
+# VS Code
+.vscode/
+
+# Gradle
+.gradle/
+build/
+
+# Maven
+target/
+
+# Log files
+*.log
+logs/
+
+# Package files
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+
+# Compiled class files
+*.class
+
+# h2 database files
+*.mv.db
+*.trace.db
+**/*.sqlite
+**/*.sqlite-journal
+
+# STS (Spring Tool Suite)
+.apt_generated
+.factorypath
+
+# macOS
+.DS_Store
+
+# Temporary files
+hs_err_pid*
+dependency-reduced-pom.xml
+
+# npm debug logs
+npm-debug.log*
