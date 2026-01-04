@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.road.mapper.ServerMapper">
+
+    <select id="findActiveServers" resultType="com.example.road.data.ServerInstance">
+        SELECT id, name, url, active FROM servers WHERE active = true
+    </select>
+
+    <select id="findAllServers" resultType="com.example.road.data.ServerInstance">
+        SELECT id, name, url, active FROM servers
+    </select>
+
+    <insert id="insertServer" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO servers (name, url, active) VALUES (#{name}, #{url}, #{active})
+    </insert>
+
+    <update id="updateServer">
+        UPDATE servers
+        SET name = #{name}, url = #{url}, active = #{active}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteServer">
+        DELETE FROM servers WHERE id = #{id}
+    </delete>
+
+</mapper>
