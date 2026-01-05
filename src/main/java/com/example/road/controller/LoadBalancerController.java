@@ -6,10 +6,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Optional;
 
 // 이 클래스가 RESTful 웹 서비스의 컨트롤러임을 나타냅니다.
 @RestController
@@ -28,17 +29,16 @@ public class LoadBalancerController {
     public ResponseEntity<ServerInstance> dispatchRequest() throws InterruptedException {
         log.info("라우트 요청을 받았습니다.");
         // ServerLoadBalancer 통해 라운드 로빈 방식으로 다음 서버 인스턴스를 가져옵니다.
-        ServerInstance server = serverLoadBalancer.getNextServer();
+        Optional<ServerInstance> serverOptional = serverLoadBalancer.getNextServer();
+
+        if (serverOptional.isEmpty()) {
+            log.warn("사용 가능한 서버가 없습니다. HTTP 503 Service Unavailable 응답을 반환합니다.");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+
+        ServerInstance server = serverOptional.get();
         log.info("다음 서버로 라우팅합니다: {}", server);
         // 가져온 서버 인스턴스 정보를 HTTP 200 OK 응답과 함께 반환합니다.
         return ResponseEntity.ok(server);
-    }
-
-    // InterruptedException이 발생했을 때 호출되는 예외 핸들러입니다.
-    @ExceptionHandler(InterruptedException.class)
-    public ResponseEntity<String> handleInterruptedException(InterruptedException ex) {
-        log.error("서버 요청 처리 중 스레드 인터럽트 발생", ex);
-        // HTTP 500 Internal Server Error 상태 코드와 함께 오류 메시지를 반환합니다.
-        return new ResponseEntity<>("서버 요청 처리 중 오류가 발생했습니다: " + ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

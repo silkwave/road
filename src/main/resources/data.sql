@@ -1,3 +1,3 @@
-INSERT INTO servers (name, url, active) VALUES ('Server A', 'http://localhost:9001', true);
-INSERT INTO servers (name, url, active) VALUES ('Server B', 'http://localhost:9002', true);
-INSERT INTO servers (name, url, active) VALUES ('Server C', 'http://localhost:9003', true);
+INSERT INTO servers (name, url, active) VALUES ('Server A', 'https://jsonplaceholder.typicode.com/posts', true);
+INSERT INTO servers (name, url, active) VALUES ('Server B', 'https://jsonplaceholder.typicode.com/posts/1', true);
+INSERT INTO servers (name, url, active) VALUES ('Server C', 'https://jsonplaceholder.typicode.com/posts/1/comments', true);

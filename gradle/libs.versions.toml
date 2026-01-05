@@ -1,0 +1,28 @@
+[versions]
+springBoot = "3.2.1"
+springDependencyManagement = "1.1.4"
+lombok = "1.18.30"
+h2 = "2.2.224"
+mybatisSpringBoot = "3.0.3"
+jakartaAnnotation = "2.1.1"
+validationApi = "3.0.2"
+
+[libraries]
+springboot-web = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "springBoot" }
+springboot-devtools = { module = "org.springframework.boot:spring-boot-devtools", version.ref = "springBoot" }
+springboot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test", version.ref = "springBoot" }
+springboot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation", version.ref = "springBoot" }
+springboot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator", version.ref = "springBoot" }
+springboot-starter-security = { module = "org.springframework.boot:spring-boot-starter-security", version.ref = "springBoot" }
+
+
+mybatis-spring-boot-starter = { module = "org.mybatis.spring.boot:mybatis-spring-boot-starter", version.ref = "mybatisSpringBoot" }
+mybatis-spring-boot-starter-test = { module = "org.mybatis.spring.boot:mybatis-spring-boot-starter-test", version.ref = "mybatisSpringBoot" }
+
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+h2 = { module = "com.h2database:h2", version.ref = "h2" }
+jakarta-annotation-api = { module = "jakarta.annotation:jakarta.annotation-api", version.ref = "jakartaAnnotation" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "springDependencyManagement" }

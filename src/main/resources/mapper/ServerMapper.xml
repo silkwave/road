@@ -10,6 +10,14 @@
         SELECT id, name, url, active FROM servers
     </select>
 
+    <select id="findById" resultType="com.example.road.data.ServerInstance">
+        SELECT id, name, url, active FROM servers WHERE id = #{id}
+    </select>
+
+    <select id="findByUrl" resultType="com.example.road.data.ServerInstance">
+        SELECT id, name, url, active FROM servers WHERE url = #{url}
+    </select>
+
     <insert id="insertServer" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO servers (name, url, active) VALUES (#{name}, #{url}, #{active})
     </insert>

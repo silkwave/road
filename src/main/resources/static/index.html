@@ -6,7 +6,8 @@
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 40px; background-color: #f8f9fa; color: #212529; }
         .container { max-width: 960px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1, h2 { color: #0056b3; border-bottom: 2px solid #dee2e6; padding-bottom: 10px; }
+        h1, h2 { color: #0056b3; border-bottom: 2px solid #dee2e6; padding-bottom: 10px; margin-top: 30px;}
+        h1 { margin-top: 0; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         th, td { padding: 12px; border: 1px solid #dee2e6; text-align: left; }
         th { background-color: #e9ecef; }
@@ -20,10 +21,21 @@
         .btn-danger:hover { background-color: #c82333; }
         .btn-warning { background-color: #ffc107; color: #212529; }
         .btn-warning:hover { background-color: #e0a800; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-success:hover { background-color: #218838; }
+        .btn-info { background-color: #17a2b8; color: white; }
+        .btn-info:hover { background-color: #138496; }
         .btn-sm { padding: 5px 10px; font-size: 12px; }
-        #log { background-color: #e9ecef; border: 1px solid #dee2e6; padding: 15px; border-radius: 5px; min-height: 100px; max-height: 300px; overflow-y: auto; margin-top: 20px; }
-        .flex-container { display: flex; justify-content: space-between; align-items: flex-start; }
-        .flex-child { width: 48%; }
+        #log-container { background-color: #e9ecef; border: 1px solid #dee2e6; padding: 15px; border-radius: 5px; min-height: 100px; max-height: 300px; overflow-y: auto; margin-top: 20px; }
+        .flex-container { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+        .flex-child { flex: 1; } /* flex-child가 공간을 균등하게 차지하도록 수정 */
+        .log-success { color: green; }
+        .log-warning { color: orange; }
+        .log-error { color: red; }
+        .log-info { color: blue; }
+        .status-healthy { color: green; font-weight: bold; }
+        .status-unhealthy { color: red; font-weight: bold; }
+        .status-inactive { color: gray; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -41,7 +53,7 @@
                 </div>
                 <div class="form-group">
                     <label for="url">URL</label>
-                    <input type="text" id="url" placeholder="예: http://server1.example.com" required>
+                    <input type="text" id="url" placeholder="예: http://localhost:8080" required>
                 </div>
                 <button type="submit" class="btn btn-primary">서버 추가</button>
             </form>
@@ -49,18 +61,18 @@
         <div class="flex-child">
             <h2>부하 분산 테스트</h2>
             <button onclick="dispatchRequest()" class="btn btn-primary">요청 보내기</button>
-            <div id="log"></div>
+            <div id="log-container"></div>
         </div>
     </div>
 
-    <h2>서버 목록</h2>
+    <h2>서버 목록 (DB 상태)</h2>
     <table id="server-list">
         <thead>
         <tr>
             <th>ID</th>
             <th>이름</th>
             <th>URL</th>
-            <th>상태</th>
+            <th>DB 활성</th>
             <th>작업</th>
         </tr>
         </thead>
@@ -68,18 +80,42 @@
         <!-- 서버 목록이 여기에 동적으로 추가됩니다. -->
         </tbody>
     </table>
+
+    <h2>서버 헬스 상태 (실시간)</h2>
+    <table id="server-health-list">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>이름</th>
+            <th>URL</th>
+            <th>DB 활성</th>
+            <th>헬스 체크</th>
+            <th>최근 확인</th>
+        </tr>
+        </thead>
+        <tbody>
+        <!-- 서버 헬스 상태가 여기에 동적으로 추가됩니다. -->
+        </tbody>
+    </table>
 </div>
 
 <script>
-    const API_URL = '/api/admin/servers';
+    const API_BASE_URL = '/api/admin/servers';
+    const HEALTH_CHECK_INTERVAL = 5000; // 5초마다 헬스 체크 상태 새로고침
 
-    // 페이지 로드 시 서버 목록을 가져옵니다.
-    document.addEventListener('DOMContentLoaded', fetchServers);
+    // 페이지 로드 시 서버 목록 및 헬스 체크 시작
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchServers();
+        startHealthCheckRefresh();
+    });
 
-    // 서버 목록 가져오기
+    // 서버 목록 가져오기 (DB 상태)
     async function fetchServers() {
         try {
-            const response = await fetch(API_URL);
+            const response = await fetch(API_BASE_URL);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             const servers = await response.json();
             const serverListBody = document.getElementById('server-list').querySelector('tbody');
             serverListBody.innerHTML = ''; // 목록 초기화
@@ -89,16 +125,16 @@
                     <td>${server.id}</td>
                     <td>${server.name}</td>
                     <td>${server.url}</td>
-                    <td>${server.active ? '활성' : '비활성'}</td>
+                    <td><span class="${server.active ? 'status-healthy' : 'status-inactive'}">${server.active ? '활성' : '비활성'}</span></td>
                     <td>
-                        <button onclick="toggleServerStatus(${server.id}, '${server.name}', '${server.url}', ${!server.active})" class="btn btn-warning btn-sm">상태 변경</button>
+                        <button onclick="toggleServerStatus(${server.id}, '${server.name}', '${server.url}', ${!server.active})" class="btn btn-warning btn-sm">상태 ${server.active ? '비활성' : '활성'}</button>
                         <button onclick="deleteServer(${server.id})" class="btn btn-danger btn-sm">삭제</button>
                     </td>
                 `;
                 serverListBody.appendChild(row);
             });
         } catch (error) {
-            logMessage(`서버 목록 로딩 실패: ${error.message}`, 'red');
+            logMessage(`서버 목록 로딩 실패: ${error.message}`, 'log-error');
         }
     }
 
@@ -110,34 +146,40 @@
         const newServer = { name, url, active: true };
 
         try {
-            const response = await fetch(API_URL, {
+            const response = await fetch(API_BASE_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newServer)
             });
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            }
             this.reset(); // 폼 초기화
             fetchServers(); // 목록 새로고침
-            logMessage(`서버 추가됨: ${name}`, 'green');
+            logMessage(`서버 추가됨: ${name}`, 'log-success');
         } catch (error) {
-            logMessage(`서버 추가 실패: ${error.message}`, 'red');
+            logMessage(`서버 추가 실패: ${error.message}`, 'log-error');
         }
     });
 
     // 서버 상태 변경 (활성/비활성)
-    async function toggleServerStatus(id, name, url, newStatus) {
-        const serverToUpdate = { id, name, url, active: newStatus };
+    async function toggleServerStatus(id, name, url, newActiveStatus) {
+        const serverToUpdate = { id, name, url, active: newActiveStatus };
         try {
-            const response = await fetch(`${API_URL}/${id}`, {
+            const response = await fetch(`${API_BASE_URL}/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(serverToUpdate)
             });
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            }
             fetchServers();
-            logMessage(`서버 상태 변경됨: ${name} -> ${newStatus ? '활성' : '비활성'}`, 'blue');
+            logMessage(`서버 상태 변경됨: ${name} -> ${newActiveStatus ? '활성' : '비활성'}`, 'log-info');
         } catch (error) {
-            logMessage(`서버 상태 변경 실패: ${error.message}`, 'red');
+            logMessage(`서버 상태 변경 실패: ${error.message}`, 'log-error');
         }
     }
 
@@ -145,12 +187,15 @@
     async function deleteServer(id) {
         if (!confirm(`정말로 ID ${id} 서버를 삭제하시겠습니까?`)) return;
         try {
-            const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const response = await fetch(`${API_BASE_URL}/${id}`, { method: 'DELETE' });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            }
             fetchServers();
-            logMessage(`서버 삭제됨: ID ${id}`, 'orange');
+            logMessage(`서버 삭제됨: ID ${id}`, 'log-warning');
         } catch (error) {
-            logMessage(`서버 삭제 실패: ${error.message}`, 'red');
+            logMessage(`서버 삭제 실패: ${error.message}`, 'log-error');
         }
     }
 
@@ -159,21 +204,67 @@
         try {
             const response = await fetch('/api/dispatch');
             if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText || `HTTP error! status: ${response.status}`);
+                const errorData = await response.json();
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
             }
             const data = await response.json();
-            logMessage(`요청 전송됨 -> <b>${data.name}</b> (URL: ${data.url})`);
+            logMessage(`요청이 <b>${data.name}</b> (URL: ${data.url}) 으로 성공적으로 전송되었습니다.`, 'log-success');
         } catch (error) {
-            logMessage(`API 요청 실패: ${error.message}`, 'red');
+            logMessage(`API 요청 실패: ${error.message}`, 'log-error');
         }
     }
 
+    // 서버 헬스 상태 가져오기 및 렌더링
+    async function fetchServerHealth() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/health`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const healthStatuses = await response.json();
+            renderServerHealth(healthStatuses);
+        } catch (error) {
+            logMessage(`서버 헬스 상태 로딩 실패: ${error.message}`, 'log-error');
+        }
+    }
+
+    // 서버 헬스 상태를 테이블에 렌더링
+    function renderServerHealth(healthStatuses) {
+        const serverHealthListBody = document.getElementById('server-health-list').querySelector('tbody');
+        serverHealthListBody.innerHTML = ''; // 목록 초기화
+
+        healthStatuses.forEach(status => {
+            const row = document.createElement('tr');
+            const healthyClass = status.healthy ? 'status-healthy' : 'status-unhealthy';
+            const lastChecked = status.lastCheckedTimestamp ? new Date(status.lastCheckedTimestamp).toLocaleString() : 'N/A';
+            row.innerHTML = `
+                <td>${status.serverInstance.id}</td>
+                <td>${status.serverInstance.name}</td>
+                <td>${status.serverInstance.url}</td>
+                <td><span class="${status.serverInstance.active ? 'status-healthy' : 'status-inactive'}">${status.serverInstance.active ? '활성(DB)' : '비활성(DB)'}</span></td>
+                <td><span class="${healthyClass}">${status.healthy ? '정상' : '비정상'}</span></td>
+                <td>${lastChecked}</td>
+            `;
+            serverHealthListBody.appendChild(row);
+        });
+    }
+
+    // 주기적으로 헬스 체크 상태 새로고침
+    function startHealthCheckRefresh() {
+        setInterval(fetchServerHealth, HEALTH_CHECK_INTERVAL);
+    }
+
     // 로그 메시지 표시
-    function logMessage(message, color = 'black') {
-        const logDiv = document.getElementById('log');
-        logDiv.innerHTML += `<p style="color: ${color};">${message}</p>`;
-        logDiv.scrollTop = logDiv.scrollHeight;
+    function logMessage(message, className = 'log-info') {
+        const logDiv = document.getElementById('log-container');
+        const p = document.createElement('p');
+        p.className = className;
+        p.innerHTML = `${new Date().toLocaleTimeString()} - ${message}`;
+        logDiv.prepend(p); // 최신 메시지가 위로 오도록 prepend 사용
+        // 로그가 너무 많아지면 오래된 로그를 제거
+        while (logDiv.children.length > 50) {
+            logDiv.removeChild(logDiv.lastChild);
+        }
     }
 
 </script>

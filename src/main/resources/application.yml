@@ -4,12 +4,33 @@ spring:
     driver-class-name: org.h2.Driver # H2 데이터베이스 드라이버 클래스 지정
     username: sa # 데이터베이스 사용자 이름
     password: # 데이터베이스 비밀번호 (인메모리이므로 비워둡니다)
+    hikari: # HikariCP 설정 추가
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000 # 30 seconds
+      idle-timeout: 600000 # 10 minutes
+      max-lifetime: 1800000 # 30 minutes
+  sql:
+    init:
+      mode: always # ALWAYS: 항상 스크립트를 실행. EMBEDDED: 임베디드 데이터베이스인 경우에만 실행. NEVER: 실행하지 않음.
+      continue-on-error: true # 스크립트 실행 중 에러 발생 시 계속 진행 여부. (개발 환경에서 유용)
   h2:
     console:
-      enabled: true # H2 콘솔 활성화. 브라우저에서 H2 데이터베이스를 관리할 수 있습니다.
+      enabled: false # 프로덕션에서는 비활성화 (개발 환경에서는 application-dev.yml에서 활성화)
   devtools:
     livereload:
-      enabled: true # Spring Boot DevTools의 라이브 리로드 기능 활성화. 코드 변경 시 자동으로 애플리케이션을 재시작합니다.
+      enabled: false # 프로덕션에서는 비활성화 (개발 환경에서는 application-dev.yml에서 활성화)
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration # Spring Security 자동 구성 제외: 보안 비활성화
+
+# 데이터베이스 연결 정보는 프로덕션 환경에서 환경 변수 또는 비밀 관리 서비스를 통해 주입하는 것이 좋습니다.
+# 예: spring.datasource.username=${DB_USERNAME}
+#      spring.datasource.password=${DB_PASSWORD}
+# HikariCP 설정 (maximum-pool-size, idle-timeout 등)도 환경에 따라 튜닝될 수 있습니다.
+# 라운드 로빈 로드 밸런서 및 헬스 체크 관련 설정 또한 환경에 따라 튜닝될 수 있습니다.
+
+
 
 mybatis:
   configuration:
@@ -17,8 +38,20 @@ mybatis:
     map-underscore-to-camel-case: true
   mapper-locations: classpath:/mapper/*.xml # MyBatis 매퍼 XML 파일의 위치를 지정합니다.
 
+# 라운드 로빈 로드 밸런서 설정
+roundrobin:
+  loadbalancer:
+    timeout-seconds: 5 # 라운드 로빈 다음 아이템 대기 타임아웃 (초)
+
+# 서버 헬스 체크 설정
+server:
+  healthcheck:
+    interval-ms: 10000 # 헬스 체크 주기 (밀리초), 기본값 10초
+    connection-timeout-ms: 3000 # 헬스 체크 연결 타임아웃 (밀리초), 기본값 3초
+    read-timeout-ms: 3000 # 헬스 체크 읽기 타임아웃 (밀리초), 기본값 3초
+
 # 로깅 설정을 추가합니다.
 logging:
   level:
     # com.example.road 패키지와 그 하위 패키지에 대한 로그 레벨을 DEBUG로 설정하여 상세한 추적 로그를 활성화합니다.
-    com.example.road: DEBUG
+    com.example.road: INFO
