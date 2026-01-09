@@ -4,39 +4,59 @@
     <meta charset="UTF-8">
     <title>R.O.A.D. Dashboard</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 40px; background-color: #f8f9fa; color: #212529; }
-        .container { max-width: 960px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1, h2 { color: #0056b3; border-bottom: 2px solid #dee2e6; padding-bottom: 10px; margin-top: 30px;}
+        /* Layout */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 20px; background-color: #f4f6f8; color: #212529; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 24px; border-radius: 10px; box-shadow: 0 6px 18px rgba(20,30,50,0.06); }
+        h1, h2 { color: #0056b3; border-bottom: 2px solid #eef1f4; padding-bottom: 10px; margin-top: 24px;}
         h1 { margin-top: 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 12px; border: 1px solid #dee2e6; text-align: left; }
-        th { background-color: #e9ecef; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-        .form-group input { width: calc(100% - 24px); padding: 10px; border: 1px solid #ced4da; border-radius: 4px; }
-        .btn { padding: 10px 15px; font-size: 14px; border: none; border-radius: 4px; cursor: pointer; text-transform: uppercase; font-weight: bold; }
+
+        /* Grid for the top controls */
+        .grid { display: grid; grid-template-columns: 1fr 380px; gap: 20px; align-items: start; }
+        @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .form-row { grid-template-columns: 1fr; } }
+
+        /* Cards */
+        .card { background: #fff; padding: 16px; border: 1px solid #e9ecef; border-radius: 8px; box-shadow: 0 1px 4px rgba(10,20,30,0.03); }
+
+        /* Forms */
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .form-group { margin-bottom: 8px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 13px; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; }
+
+        /* Buttons */
+        .btn { padding: 10px 14px; font-size: 13px; border: none; border-radius: 6px; cursor: pointer; text-transform: uppercase; font-weight: 700; box-shadow: none; }
         .btn-primary { background-color: #007bff; color: white; }
-        .btn-primary:hover { background-color: #0056b3; }
+        .btn-primary:hover { background-color: #0062cc; }
         .btn-danger { background-color: #dc3545; color: white; }
-        .btn-danger:hover { background-color: #c82333; }
+        .btn-danger:hover { background-color: #bb2d3b; }
         .btn-warning { background-color: #ffc107; color: #212529; }
         .btn-warning:hover { background-color: #e0a800; }
         .btn-success { background-color: #28a745; color: white; }
         .btn-success:hover { background-color: #218838; }
         .btn-info { background-color: #17a2b8; color: white; }
         .btn-info:hover { background-color: #138496; }
-        .btn-sm { padding: 5px 10px; font-size: 12px; }
-        #log-container { background-color: #e9ecef; border: 1px solid #dee2e6; padding: 15px; border-radius: 5px; min-height: 100px; max-height: 300px; overflow-y: auto; margin-top: 20px; }
-        .flex-container { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
-        .flex-child { flex: 1; } /* flex-child가 공간을 균등하게 차지하도록 수정 */
-        .log-success { color: green; }
-        .log-warning { color: orange; }
-        .log-error { color: red; }
-        .log-info { color: blue; }
-        .status-healthy { color: green; font-weight: bold; }
-        .status-unhealthy { color: red; font-weight: bold; }
-        .status-inactive { color: gray; font-weight: bold; }
-    </style>
+        .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 6px; }
+        .btn-group { display: flex; gap: 10px; align-items: center; }
+
+        /* Tables */
+        .table-responsive { overflow-x: auto; margin-top: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        th, td { padding: 12px; border-bottom: 1px solid #f1f3f5; text-align: left; }
+        th { background: #fbfcfd; font-weight: 700; font-size: 13px; }
+        tr:nth-child(even) td { background: #fbfdff; }
+
+        /* Log */
+        #log-container { background-color: #fbfdff; border: 1px solid #eef1f4; padding: 12px; border-radius: 6px; min-height: 140px; max-height: 320px; overflow-y: auto; }
+
+        /* Status */
+        .log-success { color: #2f8f4b; }
+        .log-warning { color: #b27600; }
+        .log-error { color: #c82333; }
+        .log-info { color: #0b5ed7; }
+        .status-healthy { color: #198754; font-weight: 700; }
+        .status-unhealthy { color: #dc3545; font-weight: 700; }
+        .status-inactive { color: #6c757d; font-weight: 700; }
+    </style> 
     <!-- <link rel="icon" href="data:,"> -->
 </head>
 <body>
@@ -44,60 +64,72 @@
 <div class="container">
     <h1>R.O.A.D. Dashboard</h1>
 
-    <div class="flex-container">
-        <div class="flex-child">
+    <div class="grid">
+        <div class="card">
             <h2>서버 관리</h2>
             <form id="add-server-form">
-                <div class="form-group">
-                    <label for="name">서버 이름</label>
-                    <input type="text" id="name" placeholder="예: Web Server 1" required>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="name">서버 이름</label>
+                        <input type="text" id="name" placeholder="예: Web Server 1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="url">URL</label>
+                        <input type="text" id="url" placeholder="예: http://localhost:8080" required>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="url">URL</label>
-                    <input type="text" id="url" placeholder="예: http://localhost:8080" required>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">서버 추가</button>
+                    <button type="button" class="btn btn-info btn-sm" onclick="fetchServers()">새로고침</button>
                 </div>
-                <button type="submit" class="btn btn-primary">서버 추가</button>
             </form>
         </div>
-        <div class="flex-child">
+        <div class="card">
             <h2>부하 분산 테스트</h2>
-            <button onclick="dispatchRequest()" class="btn btn-primary">요청 보내기</button>
+            <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+                <button onclick="dispatchRequest()" class="btn btn-primary">요청 보내기</button>
+                <button onclick="clearLogs()" class="btn btn-warning btn-sm">로그 초기화</button>
+            </div>
             <div id="log-container"></div>
         </div>
-    </div>
+    </div> 
 
-    <h2>서버 목록 (DB 상태)</h2>
-    <table id="server-list">
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>이름</th>
-            <th>URL</th>
-            <th>DB 활성</th>
-            <th>작업</th>
-        </tr>
-        </thead>
-        <tbody>
-        <!-- 서버 목록이 여기에 동적으로 추가됩니다. -->
-        </tbody>
-    </table>
+    <div class="card table-responsive">
+        <h2>서버 목록 (DB 상태)</h2>
+        <table id="server-list">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>이름</th>
+                <th>URL</th>
+                <th>DB 활성</th>
+                <th>작업</th>
+            </tr>
+            </thead>
+            <tbody>
+            <!-- 서버 목록이 여기에 동적으로 추가됩니다. -->
+            </tbody>
+        </table>
+    </div> 
 
-    <h2>서버 헬스 상태 (실시간)</h2>
-    <table id="server-health-list">
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>이름</th>
-            <th>URL</th>
-            <th>DB 활성</th>
-            <th>헬스 체크</th>
-            <th>최근 확인</th>
-        </tr>
-        </thead>
-        <tbody>
-        <!-- 서버 헬스 상태가 여기에 동적으로 추가됩니다. -->
-        </tbody>
-    </table>
+    <div class="card table-responsive">
+        <h2>서버 헬스 상태 (실시간)</h2>
+        <table id="server-health-list">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>이름</th>
+                <th>URL</th>
+                <th>DB 활성</th>
+                <th>헬스 체크</th>
+                <th>최근 확인</th>
+            </tr>
+            </thead>
+            <tbody>
+            <!-- 서버 헬스 상태가 여기에 동적으로 추가됩니다. -->
+            </tbody>
+        </table>
+    </div> 
 </div>
 
 <script>
@@ -256,6 +288,10 @@
     }
 
     // 로그 메시지 표시
+    function clearLogs() {
+        const logDiv = document.getElementById('log-container');
+        if (logDiv) logDiv.innerHTML = '';
+    }
     function logMessage(message, className = 'log-info') {
         const logDiv = document.getElementById('log-container');
         const p = document.createElement('p');
