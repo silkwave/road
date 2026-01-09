@@ -24,7 +24,10 @@ dependencies {
 
 
 
-    implementation libs.springboot.web
+    implementation(libs.springboot.web) {
+        exclude group: 'org.springframework.boot', module: 'spring-boot-starter-tomcat'
+    }
+    implementation libs.springboot.starter.jetty
     implementation libs.springboot.webflux
 
     compileOnly libs.lombok
