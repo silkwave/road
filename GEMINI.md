@@ -1,6 +1,3 @@
-
-GEMINI.md
-
 ## 사용자 선호사항
 - **언어**: 코드 내 주석과 Gemini의 답변은 **한글**로 작성합니다.
 - **jdk21**
@@ -17,148 +14,170 @@ GEMINI.md
 # 프로젝트 분석: Round Robin Load Balancer
 
 ## 1. 개요
-R.O.A.D.	Round-robin Optimized Access Director	게이트웨이가 트래픽을 안내하는 '길'임을 강조
+R.O.A.D. (Round-robin Optimized Access Director) 프로젝트는 게이트웨이가 트래픽을 안내하는 '길'임을 강조하며, 동적으로 변화하는 서버 목록을 주기적으로 헬스체크하고 라운드 로빈 방식으로 트래픽을 분산하는 시스템입니다. 핵심 로직은 `RoundRobinLoadBalancer`와 `ServerLoadBalancer`에 구현되어 있으며, 내부적으로 `BlockingQueue`를 사용하여 순환 무결성을 보장합니다.
 
-이 프로젝트는 동적으로 변화하는 서버 목록을 주기적으로 헬스체크하고, 라운드 로빈 방식으로 트래픽을 분산합니다. 핵심 로직은 `RoundRobinLoadBalancer`와 `ServerLoadBalancer`에 구현되어 있으며, 내부적으로 `BlockingQueue`를 사용해 순환 무결성을 보장합니다.
+## 2. 기술 스택
+- **언어**: Java 21
+- **프레임워크**: Spring Boot 3.2.1
+- **데이터베이스**: H2 Database (인메모리)
+- **ORM**: MyBatis (MyBatis Spring Boot Starter 3.0.3)
+- **빌드 도구**: Gradle
+- **웹**: Spring Boot Starter Web, Spring Boot Starter WebFlux (WebClient 사용)
+- **유틸리티**: Lombok
+- **개발 도구**: Spring Boot DevTools, `jakarta.annotation.api`, `springboot-starter-validation`
+- **테스트**: Spring Boot Starter Test, MyBatis Spring Boot Starter Test, MockWebServer
+- **로깅**: Logback, `net.logstash.logback:logstash-logback-encoder` (JSON 로깅)
 
+## 3. 핵심 컴포넌트
 
+### 3.1. `ServerInstance.java` (com.example.road.data)
+로드 밸런싱될 서버의 정보를 담는 데이터 클래스입니다.
+- `id`: 서버 고유 ID
+- `name`: 서버 이름
+- `url`: 서버 접속 URL
+- `active`: 서버의 활성 상태 (DB에 저장된 상태)
 
-dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    runtimeOnly 'com.h2database:h2'
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-}
-
+```java
 // ServerInstance.java
-@Data
+@Data // Lombok을 사용하여 Getter, Setter, equals, hashCode, toString 자동 생성
 public class ServerInstance {
     private Long id;
     private String name;
     private String url;
     private boolean active;
 }
-
-// ServerMapper.java (MyBatis)
-@Mapper
-public interface ServerMapper {
-    @Select("SELECT * FROM servers WHERE active = true")
-    List<ServerInstance> findActiveServers();
-}
-
-
-`ServerLoadBalancer`는 실제 구현체입니다. 주요 특징:
-
-- DB에서 서버 목록을 로드하고 비동기 헬스체크를 통해 건강한 서버만 필터링합니다.
-- `RoundRobinLoadBalancer<ServerInstance>`를 내부에서 사용하여 보관된 서버를 순환합니다.
-
-예시 (간단화된 사용 예):
-
-```java
-// 생성 시 활성 판별자 및 ID 추출기를 전달
-RoundRobinLoadBalancer<ServerInstance> balancer = new RoundRobinLoadBalancer<>(
-        "ServerInstances",
-        5,
-        ServerInstance::isActive,
-        ServerInstance::getId
-);
-
-// 헬스체크 후
-balancer.refreshItems(healthyServers);
-ServerInstance next = balancer.next().orElse(null);
 ```
 
-서비스는 `@Scheduled`와 `@Async`를 활용하여 주기적이고 병렬화된 헬스체크를 수행합니다.
+### 3.2. `ServerMapper.java` (com.example.road.mapper)
+MyBatis를 사용하여 `servers` 테이블에 접근하는 매퍼 인터페이스입니다.
+- `findAllServers()`: 모든 서버 인스턴스 목록을 조회합니다.
+- `findById(Long id)`: 특정 ID의 서버 인스턴스를 조회합니다.
+- `insertServer(ServerInstance server)`: 새로운 서버를 추가합니다.
+- `updateServer(ServerInstance server)`: 기존 서버 정보를 업데이트합니다.
+- `deleteServer(Long id)`: 특정 ID의 서버를 삭제합니다.
 
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>R.O.A.D. Dashboard</title>
-</head>
-<body>
-    <h1>Round Robin Traffic Director</h1>
-    <button onclick="dispatchRequest()">요청 보내기</button>
-    <div id="log"></div>
+```java
+// ServerMapper.java (MyBatis)
+@Mapper // MyBatis 매퍼임을 나타냅니다.
+public interface ServerMapper {
+    List<ServerInstance> findAllServers();
+    Optional<ServerInstance> findById(Long id);
+    void insertServer(ServerInstance server);
+    void updateServer(ServerInstance server);
+    void deleteServer(Long id);
+}
+```
 
-    <script>
-        async function dispatchRequest() {
-            const response = await fetch('/api/dispatch');
-            const data = await response.json();
-            const logDiv = document.getElementById('log');
-            logDiv.innerHTML += `<p>요청이 전송됨 -> <b>${data.url}</b> (${data.name})</p>`;
-        }
-    </script>
-</body>
-</html>
+### 3.3. `RoundRobinLoadBalancer.java` (com.example.road.common)
+제네릭 타입 `T`를 사용하여 라운드 로빈 방식으로 아이템을 분배하는 핵심 로직을 담고 있습니다.
+- `BlockingQueue`를 내부적으로 사용하여 스레드 안전하게 순환 무결성을 보장합니다.
+- `refreshItems()`: 새로운 아이템 목록으로 밸런서를 업데이트합니다. 이때 기존 큐의 내용이 새 아이템 목록으로 대체됩니다.
+- `next()`: 큐에서 다음 아이템을 가져옵니다. 사용 가능한 아이템이 없으면 설정된 타임아웃까지 대기합니다.
 
-spring:
-  datasource:
-    url: jdbc:h2:mem:road_db
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-  h2:
-    console:
-      enabled: (application.yml 기본은 false, 개발 환경에서 활성화 가능)
-  devtools:
-    livereload:
-      enabled: true
+```java
+// RoundRobinLoadBalancer.java
+public class RoundRobinLoadBalancer<T> {
+    private final BlockingQueue<T> queue;
+    private final Predicate<T> activePredicate;
+    private final Function<T, ?> idExtractor;
+    private final long timeoutSeconds; // poll 대기 시간
 
-mybatis:
-  configuration:
-    map-underscore-to-camel-case: true
+    // ... (생성자 및 메서드 구현)
 
+    // 사용 예시
+    // 생성 시 활성 판별자 및 ID 추출기를 전달
+    RoundRobinLoadBalancer<ServerInstance> balancer = new RoundRobinLoadBalancer<>(
+            "ServerInstances", // 로드 밸런서 이름 (로깅용)
+            5,                 // poll 대기 타임아웃 (초)
+            ServerInstance::isActive, // 활성 여부 판단 Predicate
+            ServerInstance::getId     // ID 추출 Function
+    );
 
-요약 및 특징
+    // 헬스체크 후
+    balancer.refreshItems(healthyServers);
+    ServerInstance next = balancer.next().orElse(null);
+}
+```
 
-- **순환 무결성**: `RoundRobinLoadBalancer` 내부의 `BlockingQueue`(`take()`/`put()`)로 순환 무결성 보장
+### 3.4. `ServerLoadBalancer.java` (com.example.road.service)
+실제 서버 인스턴스에 대한 로드 밸런싱 및 헬스체크 로직을 구현한 서비스입니다.
+- `@PostConstruct` `init()`: 서비스 초기화 시 `RoundRobinLoadBalancer`를 생성하고 초기 서버 목록을 로드합니다.
+- `@Scheduled` `refreshServers()`: 설정된 주기(`server.healthcheck.interval-ms`)마다 DB에서 모든 서버 목록을 가져와 병렬로 헬스체크를 수행합니다. 건강한 서버들로 `RoundRobinLoadBalancer`를 새로고침합니다.
+- `@Async` `isServerHealthy()`: 비동기적으로 각 서버의 헬스 상태를 확인합니다. `WebClient`를 사용하여 HEAD 요청을 보내 응답 코드를 확인합니다.
+- `getNextServer()`: `RoundRobinLoadBalancer`를 통해 다음 사용 가능한 서버를 반환합니다.
+- `getAllServerHealthStatuses()`: 현재 추적 중인 모든 서버의 실시간 헬스 상태(`ServerHealthStatus`) 목록을 반환합니다.
+- `@EventListener` `handleServerListChanged()`: `ServerListChangedEvent`가 발생하면 `refreshServers()`를 호출하여 서버 목록을 즉시 새로고침합니다.
 
-- **확장성**: 비동기 헬스체크와 병렬화로 여러 요청/스레드 환경에서도 안정적 운영 가능
+### 3.5. `LoadBalancerController.java` (com.example.road.controller)
+클라이언트의 부하 분산 요청을 처리하는 REST 컨트롤러입니다.
+- `GET /api/dispatch`: `ServerLoadBalancer`를 통해 다음 서버를 가져와 클라이언트에게 반환합니다. 사용 가능한 서버가 없으면 `503 Service Unavailable`을 반환합니다.
 
-- **최신 스택**: JDK 21, Spring Boot, MyBatis, H2 등을 사용하여 개발이 용이함
+### 3.6. `ServerAdminController.java` (com.example.road.controller)
+서버 인스턴스를 관리하는 REST 컨트롤러입니다.
+- `GET /api/admin/servers`: 모든 서버 목록을 조회합니다.
+- `GET /api/admin/servers/{id}`: 특정 서버를 조회합니다.
+- `POST /api/admin/servers`: 새로운 서버를 추가합니다.
+- `PUT /api/admin/servers/{id}`: 기존 서버 정보를 업데이트합니다.
+- `DELETE /api/admin/servers/{id}`: 특정 서버를 삭제합니다.
+- `GET /api/admin/servers/health`: 모든 서버의 실시간 헬스 상태를 조회합니다.
 
-- **보안 주의**: 현재 프로젝트는 개발 편의를 위해 Spring Security 자동 구성을 비활성화(`spring.autoconfigure.exclude`)했고, `SecurityConfig`는 제거되었습니다. 운영 환경에서는 별도 인증/인가 구성 적용이 필수입니다.
+### 3.7. `index.html` (src/main/resources/static)
+프론트엔드 대시보드 페이지입니다.
+- 서버 추가, 활성/비활성 토글, 삭제 기능을 제공합니다.
+- `/api/dispatch` 엔드포인트를 호출하여 부하 분산 테스트를 수행합니다.
+- 주기적으로 `/api/admin/servers/health`를 호출하여 서버들의 실시간 헬스 상태를 대시보드에 표시합니다.
+- 바닐라 JavaScript를 사용하여 비동기 통신 및 DOM 조작을 처리합니다.
 
-**빠른 시작 요약**: 로컬 실행은 `./gradlew bootRun --args='--spring.profiles.active=dev'` 또는 `./gradlew bootJar && java -jar ... --spring.profiles.active=dev`, H2 콘솔은 `http://localhost:8080/h2-console` (JDBC URL: `jdbc:h2:mem:road_db`, user: `sa`)를 사용하세요.
+## 4. 환경 설정 (`application.yml` 및 `application-dev.yml`)
 
----
+### 4.1. 데이터베이스 설정
+- H2 인메모리 데이터베이스 사용: `jdbc:h2:mem:road_db`
+- `spring.sql.init.mode=always`: 애플리케이션 시작 시 `schema.sql` 및 `data.sql` 스크립트 실행
+- `mybatis.mapper-locations`: MyBatis 매퍼 XML 파일 위치 지정 (`classpath:/mapper/*.xml`)
+- `mybatis.configuration.map-underscore-to-camel-case`: DB 컬럼명-Java 필드명 자동 매핑
 
-## 개발환경 분석 (요약)
-아래 내용은 개발 생산성에 영향을 주는 주요 설정과 권장 작업입니다.
+### 4.2. 헬스체크 및 비동기 설정
+- `server.healthcheck.interval-ms`: 헬스 체크 주기 (기본 10초)
+- `server.healthcheck.connection-timeout-ms`, `server.healthcheck.read-timeout-ms`: `WebClient`의 연결/읽기 타임아웃 (기본 3초)
+- 비동기 헬스체크를 위한 `HealthCheckConfig.healthCheckExecutor()` (corePoolSize=5, maxPoolSize=10, queueCapacity=25) 설정
 
-### 프로파일 및 개발 도구
-- 개발 전용 프로파일: `src/main/resources/application-dev.yml` (H2 콘솔 및 devtools 활성화). 기본 `application.yml`은 H2 콘솔을 비활성화합니다.
-- Spring Boot DevTools 의존성: `build.gradle`의 `developmentOnly libs.springboot.devtools` — 코드 변경 시 자동 리스타트/라이브 리로드가 가능합니다.
+### 4.3. 라운드 로빈 구성
+- `roundrobin.loadbalancer.timeout-seconds`: `RoundRobinLoadBalancer`의 `next()` 메서드 대기 타임아웃 (기본 5초)
 
-### 로그 및 디버깅
-- `src/main/resources/logback-spring.xml`에서 `dev` 프로파일 시 `com.example.road` 로거를 DEBUG로 설정하여 개발 시 상세 로그 확인 가능.
-- 개발 시 콘솔 로그와 JSON 파일 로그(프로덕션용)를 동시에 기록하도록 구성되어 있습니다 (`logs/application.json`).
+### 4.4. 개발 도구 및 로깅
+- `application-dev.yml`에서 H2 콘솔 활성화 (`spring.h2.console.enabled=true`)
+- `application-dev.yml`에서 `devtools` 라이브 리로드 활성화 (`spring.devtools.livereload.enabled=true`)
+- `logback-spring.xml`을 통해 `dev` 프로파일 시 `com.example.road` 패키지의 로그 레벨을 `DEBUG`로 설정 가능.
+- 콘솔 로그와 JSON 파일 로그 (`logs/application.json`) 동시 기록.
 
-### 헬스체크 및 비동기 설정
-- 헬스체크 스케줄: `server.healthcheck.interval-ms` (기본 10000 ms) — `ServerLoadBalancer#refreshServers()`가 주기 실행됩니다.
-- 비동기 헬스체크 Executor: `HealthCheckConfig.healthCheckExecutor()`
-  - corePoolSize=5, maxPoolSize=10, queueCapacity=25, threadNamePrefix="HealthCheck-" (필요 시 조정 권장)
-- RestTemplate 시간초과: `server.healthcheck.connection-timeout-ms` 및 `server.healthcheck.read-timeout-ms` (기본 5000 ms)
+## 5. 보안
+- 현재 프로젝트는 개발 편의를 위해 Spring Security 자동 구성을 비활성화했습니다 (`spring.autoconfigure.exclude`).
+- 운영 환경에서는 적절한 인증/인가 구성 (예: JWT, OAuth2) 및 HTTPS 설정이 필수적입니다.
 
-### 라운드 로빈 구성
-- `roundrobin.loadbalancer.timeout-seconds` (기본 5초): `RoundRobinLoadBalancer`의 `poll` 대기 시간에 해당합니다.
-- `RoundRobinLoadBalancer`는 생성자에 활성 판별자(Predicate)와 ID 추출기(Function)를 받아 유연하게 동작합니다.
+## 6. 빠른 시작
 
-### 데이터베이스 및 테스트
-- H2 인메모리 DB: `jdbc:h2:mem:road_db` (개발 시 빠른 초기화와 테스트에 편리)
-- 테스트는 `SpringBootTest` + `MockMvc`를 사용하며, 통합 테스트에서 `JdbcTemplate`로 DB 초기화 후 롤백 처리를 합니다.
-- `spring-security-test`는 제거되어 테스트는 보안 비활성화 상태에 맞게 정리되었습니다.
+### 6.1. 로컬 실행 (개발 프로파일)
+```bash
+./gradlew bootRun --args='--spring.profiles.active=dev'
+```
+- H2 콘솔 및 DevTools가 활성화됩니다.
 
-### 권장 개발 워크플로우 및 체크리스트
-- 로컬 실행(개발): `./gradlew bootRun --args='--spring.profiles.active=dev'` (H2 콘솔 및 devtools 활성화)
-- 빠른 이슈 분석: `logs/application.json`과 콘솔 로그를 함께 확인
-- 프로덕션 배포 전 체크: 보안(인증/인가) 활성화, HTTPS 설정, 시크릿/환경변수 관리, 로깅 정책 검토
-- 퍼포먼스 조정: 헬스체크 Executor 및 RestTemplate 타임아웃을 트래픽 특성에 맞게 튜닝
+### 6.2. JAR 파일 실행
+```bash
+./gradlew bootJar
+java -jar build/libs/road-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
+```
 
----
+### 6.3. H2 콘솔 접근
+- URL: `http://localhost:8080/h2-console`
+- JDBC URL: `jdbc:h2:mem:road_db`
+- User Name: `sa`
+- Password: (비워둡니다)
 
-필요하시면 이 섹션을 `README.md`로 동기화하거나, 운영 환경(production)용 체크리스트를 상세화해 드리겠습니다.
+### 6.4. 대시보드 접근
+- URL: `http://localhost:8080/index.html`
+
+## 7. 테스트
+- `SpringBootTest`와 `MockMvc`를 사용하여 컨트롤러 및 서비스 계층을 테스트합니다.
+- `JdbcTemplate`를 활용하여 통합 테스트 시 DB 초기화 후 롤백 처리를 수행합니다.
+- `spring-security-test` 의존성이 제거되어 보안 비활성화 상태에 맞춰 테스트가 작성되었습니다.
