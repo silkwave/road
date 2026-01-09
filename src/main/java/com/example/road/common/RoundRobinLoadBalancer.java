@@ -84,14 +84,13 @@ public class RoundRobinLoadBalancer<T> {
             return Optional.empty();
         }
 
+        Long id = idFunction != null ? idFunction.apply(item) : null;
+        log.debug("[{}] 아이템 '{}'를 선택했습니다.", name, id);
+
         try {
-            Long id = idFunction != null ? idFunction.apply(item) : null;
-            log.debug("[{}] 아이템 '{}'를 선택했습니다.", name, id);
             return Optional.of(item);
         } finally {
-            // 아이템을 다시 큐의 끝에 추가합니다.
             itemQueue.put(item);
-            Long id = idFunction != null ? idFunction.apply(item) : null;
             log.debug("[{}] 아이템 '{}'를 큐에 다시 추가했습니다.", name, id);
         }
     }

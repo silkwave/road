@@ -11,8 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.net.URI;
 import java.util.List;
@@ -33,7 +32,7 @@ import org.springframework.scheduling.annotation.Async; // 추가
 public class ServerLoadBalancer {
 
     private final ServerMapper serverMapper;
-    private final RestTemplate restTemplate; // RestTemplate 주입
+    private final WebClient webClient;
     // application.yml에서 타임아웃 설정을 주입받습니다.
     @Value("${roundrobin.loadbalancer.timeout-seconds:5}") // Default to 5 seconds if not set
     private long loadBalancerTimeoutSeconds;
@@ -101,17 +100,25 @@ public class ServerLoadBalancer {
             log.warn("서버 {}의 URL {}이 유효하지 않습니다.", server.getName(), server.getUrl());
             return CompletableFuture.completedFuture(false);
         }
-        try {
-            restTemplate.headForHeaders(server.getUrl());
-            log.debug("서버 {} ({}) 헬스 체크 성공.", server.getName(), server.getUrl());
-            return CompletableFuture.completedFuture(true);
-        } catch (ResourceAccessException e) {
-            log.warn("서버 {} ({}) 헬스 체크 실패: 연결 타임아웃 또는 호스트에 연결할 수 없습니다.", server.getName(), server.getUrl());
-            return CompletableFuture.completedFuture(false);
-        } catch (Exception e) {
-            log.warn("서버 {} ({}) 헬스 체크 중 오류 발생: {}", server.getName(), server.getUrl(), e.getMessage());
-            return CompletableFuture.completedFuture(false);
-        }
+
+        return webClient.head()
+                .uri(server.getUrl())
+                .retrieve()
+                .toBodilessEntity()
+                .map(response -> {
+                    boolean isHealthy = response.getStatusCode().is2xxSuccessful();
+                    if (isHealthy) {
+                        log.debug("서버 {} ({}) 헬스 체크 성공.", server.getName(), server.getUrl());
+                    } else {
+                        log.warn("서버 {} ({}) 헬스 체크 실패: 상태 코드 {}", server.getName(), server.getUrl(), response.getStatusCode());
+                    }
+                    return isHealthy;
+                })
+                .toFuture()
+                .exceptionally(ex -> {
+                    log.warn("서버 {} ({}) 헬스 체크 중 오류 발생: {}", server.getName(), server.getUrl(), ex.getMessage());
+                    return false;
+                });
     }
 
     /**
