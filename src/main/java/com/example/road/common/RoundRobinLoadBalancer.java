@@ -1,6 +1,8 @@
 package com.example.road.common;
 
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -45,7 +47,7 @@ public class RoundRobinLoadBalancer<T> {
     /**
      * 지정된 이름, 타임아웃, 활성 판별자 및 ID 추출기를 사용하여 라운드 로빈 로드 밸런서를 생성합니다.
      */
-    public RoundRobinLoadBalancer(String name, long timeoutSeconds, java.util.function.Predicate<T> activePredicate, java.util.function.Function<T, Long> idFunction) {
+    public RoundRobinLoadBalancer(String name, long timeoutSeconds, Predicate<T> activePredicate, Function<T, Long> idFunction) {
         this.name = name;
         this.timeoutSeconds = timeoutSeconds;
         this.activePredicate = activePredicate;
@@ -59,10 +61,10 @@ public class RoundRobinLoadBalancer<T> {
      *
      * @param allItems 전체 아이템 목록
      */
-    public void refreshItems(java.util.List<T> allItems) { // 여기는 이미 수정됨
+    public void refreshItems(List<T> allItems) { // 여기는 이미 수정됨
         log.info("[{}] 아이템 목록 새로고침을 시작합니다...", name);
         itemQueue.clear();
-        java.util.List<T> activeItems = allItems.stream() // 여기를 수정
+        List<T> activeItems = allItems.stream() // 여기를 수정
                 .filter(activePredicate)
                 .collect(Collectors.toList());
         itemQueue.addAll(activeItems);
