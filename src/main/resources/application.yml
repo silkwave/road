@@ -16,10 +16,10 @@ spring:
       continue-on-error: true # 스크립트 실행 중 에러 발생 시 계속 진행 여부. (개발 환경에서 유용)
   h2:
     console:
-      enabled: false # 프로덕션에서는 비활성화 (개발 환경에서는 application-dev.yml에서 활성화)
+      enabled: true # 프로덕션에서는 비활성화 (개발 환경에서는 application-dev.yml에서 활성화)
   devtools:
     livereload:
-      enabled: false # 프로덕션에서는 비활성화 (개발 환경에서는 application-dev.yml에서 활성화)
+      enabled: true # 프로덕션에서는 비활성화 (개발 환경에서는 application-dev.yml에서 활성화)
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration # Spring Security 자동 구성 제외: 보안 비활성화
@@ -54,4 +54,4 @@ server:
 logging:
   level:
     # com.example.road 패키지와 그 하위 패키지에 대한 로그 레벨을 DEBUG로 설정하여 상세한 추적 로그를 활성화합니다.
-    com.example.road: INFO
+    com.example.road: DEBUG
