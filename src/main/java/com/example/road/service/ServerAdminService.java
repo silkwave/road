@@ -12,7 +12,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 import jakarta.annotation.PostConstruct;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * 서버 인스턴스 관리와 관련된 비즈니스 로직을 처리하는 서비스입니다.
