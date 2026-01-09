@@ -15,7 +15,7 @@
     </select>
 
     <select id="findByUrl" resultType="com.example.road.data.ServerInstance">
-        SELECT id, name, url, active FROM servers WHERE url = #{url}
+        SELECT id, name, url, active FROM servers WHERE url = #{url} LIMIT 1
     </select>
 
     <insert id="insertServer" useGeneratedKeys="true" keyProperty="id">

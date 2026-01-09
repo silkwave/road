@@ -5,6 +5,8 @@ import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -20,8 +22,8 @@ public class RoundRobinLoadBalancer<T> {
     private final BlockingQueue<T> itemQueue = new LinkedBlockingQueue<>();
     private final String name;
     private final long timeoutSeconds;
-    private final java.util.function.Predicate<T> activePredicate;
-    private final java.util.function.Function<T, Long> idFunction;
+    private final Predicate<T> activePredicate;
+    private final Function<T, Long> idFunction;
 
     /**
      * 지정된 이름으로 라운드 로빈 로드 밸런서를 생성합니다.

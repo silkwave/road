@@ -19,9 +19,14 @@ repositories {
 }
 
 dependencies {
+
+
+
+
+
     implementation libs.springboot.web
     implementation libs.springboot.webflux
-    implementation libs.mybatis.spring.boot.starter
+
     compileOnly libs.lombok
     annotationProcessor libs.lombok
     runtimeOnly libs.h2
@@ -33,7 +38,11 @@ dependencies {
     implementation 'net.logstash.logback:logstash-logback-encoder:7.4' // JSON 로깅을 위한 의존성 추가
     testImplementation libs.springboot.starter.test
     testImplementation libs.mybatis.spring.boot.starter.test
+
+    implementation libs.mybatis.spring.boot.starter
     testImplementation libs.mockwebserver
+
+
 }
 
 tasks.named('test') {

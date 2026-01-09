@@ -82,7 +82,7 @@ public class ServerLoadBalancer {
                 .collect(Collectors.toList());
 
         balancer.refreshItems(healthyServersForBalancer);
-        log.info("서버 목록 새로고침 및 헬스 체크 완료. 로드 밸런서의 활성 서버 수: {}", healthyServersForBalancer.size());
+        log.info("서버 목록 새로고침 및 헬스 체크 완료. 로드 밸런서의 활성 서버 수: {}. 현재 큐의 아이템 수: {}", healthyServersForBalancer.size(), balancer.getActiveItemCount());
     }
 
     /**
@@ -161,13 +161,5 @@ public class ServerLoadBalancer {
         this.serverHealthStatuses.clear();
     }
 
-    /**
-     * ServerListChangedEvent가 발생했을 때 서버 목록을 새로고침하는 이벤트 리스너입니다.
-     * @param event 서버 목록 변경 이벤트
-     */
-    @EventListener
-    public void handleServerListChanged(ServerListChangedEvent event) {
-        log.info("서버 목록 변경 이벤트를 감지했습니다. 서버 목록을 새로고침합니다.");
-        refreshServers();
-    }
+
 }

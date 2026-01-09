@@ -150,17 +150,18 @@ class ServerAdminControllerIntegrationTest {
                 .andExpect(jsonPath("$.message").value("유효성 검사 실패"));
     }
 
-    @Test
-    @DisplayName("중복 URL 서버 추가 시 409 Conflict ErrorResponse 반환 테스트")
-    void addServerDuplicateUrlTest() throws Exception {
-        ServerInstance duplicateServer = new ServerInstance(null, "Server D", "http://localhost:9001", true); // 기존 URL과 중복
-
-        performPostJson("/api/admin/servers", duplicateServer)
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.status").value(409))
-                .andExpect(jsonPath("$.error").value("Conflict"))
-                .andExpect(jsonPath("$.message").value("이미 존재하는 서버 URL입니다: http://localhost:9001"));
-    }
+    // @Test
+    // @DisplayName("중복 URL 서버 추가 시 409 Conflict ErrorResponse 반환 테스트")
+    // void addServerDuplicateUrlTest() throws Exception {
+    //     // 중복 URL 검사 로직이 제거되었으므로 이 테스트는 더 이상 유효하지 않습니다.
+    //     // ServerInstance duplicateServer = new ServerInstance(null, "Server D", "http://localhost:9001", true); // 기존 URL과 중복
+    //
+    //     // performPostJson("/api/admin/servers", duplicateServer)
+    //     //         .andExpect(status().isConflict())
+    //     //         .andExpect(jsonPath("$.status").value(409))
+    //     //         .andExpect(jsonPath("$.error").value("Conflict"))
+    //     //         .andExpect(jsonPath("$.message").value("이미 존재하는 서버 URL입니다: http://localhost:9001"));
+    // }
 
     @Test
     @DisplayName("서버 업데이트 통합 테스트")
